@@ -1,0 +1,96 @@
+---
+title: "2mode examples"
+author: "CInguaggiato"
+date: "Thursday, July 17, 2014"
+output: html_document
+---
+
+### Synopsis
+
+This document shows how to deal with two mode networks.
+
+Basic concern is about the empirical approach relates with the two-mode networks when transformed in one-mode undirected networks. 
+Those networks, in which the participating organizations are connected to each other through co-membership in innovation projects, strongly induce both the brokerage index and the intercohesive factor by common participation in projects. The brokerage index strictly relates with number of projects participated while the intercohesive factor relates with the projects participated together. 
+The approach proposed by Tore Opsahl (Opsahl and Panzarasa, 2009) is applied to get a better understanding of possible solutions.
+
+
+ 
+### Empirical data
+ 
+ The dataset relates with the projects submitted in a call for proposal issued by Regione Piemonte in 2010. The call addresses "Life Science innovation projects".
+ 
+ Nine the projects submitted.   
+ 78 the subjects who participated.
+ The list of participants per project follows:
+ 
+ 
+```{r download}
+
+biotech<-read.table("~/GitHub/2mode/data/biotech.txt",sep=";", 
+                  header=T, stringsAsFactors = FALSE)
+str(biotech)
+
+myprj<-unique(biotech$prj)
+
+# prjsbj represents sbj for each prj
+
+prjsbj<-sapply(myprj, function(x) biotech$sbj[biotech$prj==x])
+prjsbj
+
+```
+
+12 subjects participate in more than one project
+
+```{r 2sbj}
+
+sbj2<-table(biotech$sbj)[table(biotech$sbj)>1]
+names(sbj2)
+
+```
+
+
+A basic plot shows projects (in red), participants (in gold). The 12 subjects in more than one project are brown.
+
+```{r plot1, fig.height=9}
+
+library (igraph)
+
+gbiotech <- graph.data.frame(biotech)
+
+# set prj type <- TRUE
+V(gbiotech)$type <- V(gbiotech)$name %in% biotech[,1]
+
+v_col<-rep("gold",87)
+
+v_col[!V(gbiotech)$type]<-c("red")
+v_col[V(gbiotech)$name %in% names(sbj2)]<-c("brown")
+
+plot.igraph(gbiotech, layout=layout.fruchterman.reingold, edge.arrow.size=0.1,
+            vertex.label.cex=.7,vertex.color=v_col)
+
+```
+
+Then from a 2 mode network has been created the network of subjects and the network of projects.   
+
+A basic plot shows the participants divided by project.  The 12 subjects in more than one project are brown.
+
+```{r plot2, fig.height=9}
+
+nnbio<-bipartite.projection(gbiotech)
+
+
+snbio<-nnbio$proj2
+pnbio<-nnbio$proj1
+
+v_col<-rep("gold",78)
+
+v_col[V(snbio)$name %in% names(sbj2)]<-c("brown")
+
+plot.igraph(snbio, layout=layout.fruchterman.reingold, edge.arrow.size=0.1,
+            vertex.label.cex=.7,vertex.color=v_col,)
+
+
+```
+
+
+
