@@ -7,21 +7,24 @@ output: html_document
 
 ### Synopsis
 
-This document shows how to deal with two mode networks.
+This document deals with **two mode networks** and relates with the two-mode networks when transformed in one-mode undirected networks. 
 
-Basic concern is about the empirical approach relates with the two-mode networks when transformed in one-mode undirected networks. 
-Those networks, in which the participating organizations are connected to each other through co-membership in innovation projects, strongly induce both the brokerage index and the intercohesive factor by common participation in projects. The brokerage index strictly relates with number of projects participated while the intercohesive factor relates with the projects participated together. 
+Specifically it considers cooperative innovation projects, where several subjects costitute temporary agency to make research projects.    
+The participating organizations  connected to each other through co-membership in innovation projects create networks.
+
+The document argues that both the brokerage index and the intercohesive factor are related with the common participation in projects. 
+
 The approach proposed by Tore Opsahl (Opsahl and Panzarasa, 2009) is applied to get a better understanding of possible solutions.
 
 
  
 ### Empirical data
  
- The dataset relates with the projects submitted in a call for proposal issued by Regione Piemonte in 2010. The call addresses "Life Science innovation projects".
+The dataset relates with the projects submitted in a call for proposal issued by Regione Piemonte in 2010. The call addresses "Life Science innovation projects".
  
- Nine the projects submitted.   
- 78 the subjects who participated.
- The list of participants per project follows:
+9 are the projects submitted.    
+78 the subjects who participated.  
+The list of participants per project follows:
  
  
 ```{r download}
@@ -65,6 +68,7 @@ v_col<-rep("gold",87)
 v_col[!V(gbiotech)$type]<-c("red")
 v_col[V(gbiotech)$name %in% names(sbj2)]<-c("brown")
 
+
 plot.igraph(gbiotech, layout=layout.fruchterman.reingold, edge.arrow.size=0.1,
             vertex.label.cex=.7,vertex.color=v_col)
 
@@ -86,8 +90,96 @@ v_col<-rep("gold",78)
 
 v_col[V(snbio)$name %in% names(sbj2)]<-c("brown")
 
-plot.igraph(snbio, layout=layout.fruchterman.reingold, edge.arrow.size=0.1,
+co<-layout.fruchterman.reingold(snbio)
+plot.igraph(snbio, layout=co, edge.arrow.size=0.1,
             vertex.label.cex=.7,vertex.color=v_col,)
+
+
+```
+
+
+
+
+
+
+
+
+Using the *Igraph Rpackage*  local transitivity of each vertex is computed. Transitivity measures the probability that the adjacent vertices of a vertex are connected. This is sometimes also called the clustering coefficient. The local transitivity of a vertex is the
+ratio of the triangles connected to the vertex and the triples centered on the
+vertex. Algorithm uses the definition by A. Barrat.
+
+A subject is considered as a broker when its transitivity is <1 and a nonbroker
+=1.
+
+```{r transitivity}
+
+# clustering coefficient
+tt<-transitivity (snbio,type=c("local" )) 
+
+
+V(snbio)$name[tt<1]
+
+```
+
+The 12 subjects with transitivity <1 are the **same 12 subjects** in more than one project.
+
+
+Those 12 subjects can be shown calculating the max cliques of the network, giving a specific colour to each clique and identify subjects which are common to different cliques.
+
+
+```{r cliques, fig.height=9}
+
+# maximal clique  
+myclique<-maximal.cliques(snbio)
+myclique_list<-sapply(myclique, function(x) V(snbio)$name[x])
+myll<-length(myclique_list)
+
+##########PLOT ####################
+myblocks=length(myclique)
+mycolors<-rainbow(myblocks)
+v_col<-rep("white",78)
+
+
+j<-0
+for (i in 1:myblocks){
+  j<-j+1
+  v_col[myclique[[i]] ]<- mycolors[j]
+}
+v_col[V(snbio)$name %in% names(sbj2)]<-c("white")
+
+plot.igraph(snbio, layout=co, edge.arrow.size=0.1,
+            vertex.label.cex=.7,vertex.color=v_col,)
+
+```
+
+
+
+
+Now we apply the clique percolation algorithm developed by Palla et al. (2004) as it's implemented in R language and riported in (http://igraph.wikidot.com/community-detection-in-r). 
+
+```{r cpm}
+
+# clique.community FUNCTION ##############
+
+clique.community <- function(graph, k) {
+  clq <- cliques(graph, min=k, max=k) # my correction with maximal
+  edges <- c()
+  for (i in seq_along(clq)) {
+    for (j in seq_along(clq)) {
+      if ( length(unique(c(clq[[i]], clq[[j]]))) == k+1 ) {
+        edges <- c(edges, c(i,j)-1)
+      }
+    }
+  }
+  clq.graph <- simplify(graph(edges))
+  V(clq.graph)$name <- seq_len(vcount(clq.graph))
+  comps <- decompose.graph(clq.graph)
+  
+  lapply(comps, function(x) {
+    unique(unlist(clq[ V(x)$name ]))
+  })
+}
+
 
 
 ```

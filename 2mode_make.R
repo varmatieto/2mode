@@ -1,5 +1,5 @@
 
-biotech<-read.table("biotech.txt",sep=";", 
+biotech<-read.table("~/GitHub/2mode/data/biotech.txt",sep=";", 
                   header=T, stringsAsFactors = FALSE)
 head(biotech)
 str(biotech)
@@ -119,7 +119,7 @@ plot(tt,bb)
 # clique.community FUNCTION ##############
 
 clique.community <- function(graph, k) {
-  clq <- maximal.cliques(graph) # my correction with maximal
+  clq <- cliques(graph, min=k, max=k) # my correction with maximal
   edges <- c()
   for (i in seq_along(clq)) {
     for (j in seq_along(clq)) {
@@ -149,20 +149,20 @@ myclique_list<-sapply(myclique, function(x) V(snbio)$name[x])
 length(myclique_list)
 
 ##########PLOT ####################
-myblocks=length(myclique)
-mycolors<-rainbow(myblocks)
+blockmax=length(myclique)
+mycolors<-rainbow(blockmax)
 v_col<-rep("white",78)
 
 
 j<-0
-for (i in 1:myblocks){
+for (i in 1:blockmax){
   j<-j+1
   v_col[myclique[[i]] ]<- mycolors[j]
 }
-v_col[V(snbio)$name %in% names(sbj2)]<-c("white")
+#v_col[V(snbio)$name %in% names(sbj2)]<-c("white")
 
-plot.igraph(snbio, layout=mylay2, edge.arrow.size=0.1,
-            vertex.label.cex=.7,vertex.color=v_col,)
+plot.igraph(snbio, layout=layout.fruchterman.reingold, edge.arrow.size=0.1,
+            vertex.label.cex=.7,vertex.color=v_col)
 
 
 
@@ -170,10 +170,27 @@ plot.igraph(snbio, layout=mylay2, edge.arrow.size=0.1,
 
 
 # clique  percolation is a community detection method developed by Gergely Palla
-cli_com<-clique.community (snbio,18)
+cli_com<-clique.community (snbio,4)
 
 myclique_perco<-sapply(cli_com, function(x) V(snbio)$name[x])
 myclique_perco
+
+blockper=length(myclique_perco)
+mycolors<-rainbow(blockper)
+v_col<-rep("white",78)
+
+
+j<-0
+for (i in 1:blockper){
+  j<-j+1
+  v_col[cli_com[[i]] ]<- mycolors[j]
+}
+#v_col[V(snbio)$name %in% names(sbj2)]<-c("white")
+
+plot.igraph(snbio, layout=layout.fruchterman.reingold, edge.arrow.size=0.1,
+            vertex.label.cex=.7,vertex.color=v_col)
+
+
 
 ############################################
 c<-matrix(0,10,2)
