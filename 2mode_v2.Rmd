@@ -1,0 +1,315 @@
+---
+title: "2mode examples"
+author: "CInguaggiato"
+date: "Thursday, July 18, 2014"
+output: html_document
+---
+
+### Synopsis
+
+This document deals with **two mode networks** and relates with the two-mode networks when transformed in one-mode undirected networks. 
+
+Specifically it considers cooperative innovation projects, where several subjects costitute temporary agency to make research projects.    
+The participating organizations  connected to each other through co-membership in innovation projects create networks.
+
+The document argues that both the brokerage index and the intercohesive factor are related with the common participation in projects. 
+
+The approach proposed by Tore Opsahl (Opsahl and Panzarasa, 2009) is applied to get a better understanding of possible solutions.
+
+
+ 
+### Empirical data
+ 
+The dataset relates with the projects submitted in a call for proposal issued by Regione Piemonte in 2010. The call addresses "Life Science innovation projects".
+ 
+9 are the projects submitted.    
+78 the subjects who participated.  
+The list of participants per project follows:
+ 
+ 
+```{r download}
+
+biotech<-read.table("~/GitHub/2mode/data/biotech.txt",sep=";", 
+                  header=T, stringsAsFactors = FALSE)
+str(biotech)
+
+myprj<-unique(biotech$prj)
+
+# prjsbj represents sbj for each prj
+
+prjsbj<-sapply(myprj, function(x) biotech$sbj[biotech$prj==x])
+
+
+```
+
+12 subjects participate in more than one project
+
+```{r 2sbj}
+
+sbj2<-table(biotech$sbj)[table(biotech$sbj)>1]
+names(sbj2)
+
+```
+
+#### 2mode and 1mode networks
+
+A basic plot shows projects (in red), participants (in gold). The 12 subjects in more than one project are brown.
+
+```{r plot1, fig.height=9}
+
+library (igraph)
+
+gbiotech <- graph.data.frame(biotech)
+
+# set prj type <- TRUE
+V(gbiotech)$type <- V(gbiotech)$name %in% biotech[,1]
+
+v_col<-rep("gold",87)
+
+v_col[!V(gbiotech)$type]<-c("red")
+v_col[V(gbiotech)$name %in% names(sbj2)]<-c("brown")
+
+
+plot.igraph(gbiotech, layout=layout.fruchterman.reingold, edge.arrow.size=0.1,
+            vertex.label.cex=.7,vertex.color=v_col)
+
+```
+
+Then from a 2 mode network has been created the network of subjects and the network of projects.   
+
+A basic plot shows the participants divided by project.  The 12 subjects in more than one project are white.
+
+```{r plot2, fig.height=9}
+
+nnbio<-bipartite.projection(gbiotech)
+
+
+snbio<-nnbio$proj2
+pnbio<-nnbio$proj1
+
+myclique<-maximal.cliques(snbio)
+myclique_list<-sapply(myclique, function(x) V(snbio)$name[x])
+
+myblocks=length(myclique)
+mycolors<-rainbow(myblocks)
+v_col<-rep("white",78)
+
+
+j<-0
+for (i in 1:myblocks){
+  j<-j+1
+  v_col[myclique[[i]] ]<- mycolors[j]
+}
+v_col[V(snbio)$name %in% names(sbj2)]<-c("white")
+
+co<-layout.fruchterman.reingold(snbio)
+plot.igraph(snbio, layout=co, edge.arrow.size=0.1,
+            vertex.label.cex=.7,vertex.color=v_col,)
+
+```
+
+#### Clustering coefficient
+
+Using the *Igraph Rpackage*,  local transitivity of each vertex is computed. Transitivity measures the probability that the adjacent vertices of a vertex are connected. This is sometimes also called the clustering coefficient. The local transitivity of a vertex is the
+ratio of the triangles connected to the vertex and the triples centered on the
+vertex. Algorithm uses the definition by A. Barrat.
+
+A subject is considered as a broker when its transitivity is <1 and a nonbroker
+=1.
+
+```{r transitivity}
+
+# clustering coefficient
+tt<-transitivity (snbio,type=c("local" )) 
+
+
+V(snbio)$name[tt<1]
+
+```
+
+The 12 subjects with transitivity <1 are the **same 12 subjects** in more than one project.
+
+It is possible to check how projects overlap in term of subjects involved. The following table reports for each couple of projects the subjects which are in both projects.
+9 are the projects, 28 the possible joint by couples: 18 couples share one subjects, 8 couples share 2 subjects, 2 couples share 4 subjects.
+
+
+```{r overlap_prj}
+
+f<-list ()
+
+for (i in names (prjsbj) ) {
+
+  for (j in names (prjsbj) ) {
+    
+    if ( i != j) {
+              if (mean(prjsbj[[j]]  %in% prjsbj[[i]]) >0) {
+            f[[i]][[j]]<- prjsbj[[i]]  %in% prjsbj[[j]] 
+        }
+    }
+    }
+ }
+ff<-list ()
+
+for (i in names (prjsbj)) {
+    
+    ff[[i]]<-sapply( f[[i]], function(x) sum(x) )
+}
+
+table(unlist(ff))
+
+
+```
+
+
+#### Clique percolation
+
+I tried to run the clique percolation algorithm developed by Palla et al. (2004) as it's implemented in R language and riported in [Community Detection In R ](http://igraph.wikidot.com/community-detection-in-r)  with **k=3**. 3 is equal to the number of subjects in the smallest project minus 1.
+
+
+```{r cpm,cache=TRUE}
+
+# clique.community FUNCTION ##############
+
+clique.community <- function(graph, k) {
+  clq <- cliques(graph, min=k, max=k) 
+  edges <- c()
+  for (i in seq_along(clq)) {
+    for (j in seq_along(clq)) {
+      if ( length(unique(c(clq[[i]], clq[[j]]))) == k+1 ) {
+        edges <- c(edges, c(i,j))
+      }
+    }
+  }
+  clq.graph <- simplify(graph(edges))
+  V(clq.graph)$name <- seq_len(vcount(clq.graph))
+  comps <- decompose.graph(clq.graph)
+  
+  lapply(comps, function(x) {
+    unique(unlist(clq[ V(x)$name ]))
+  })
+}
+
+cli_com3<-clique.community (snbio,3)
+lcli3<-length(cli_com3)
+
+# sapply(cli_com3, function (x) V(snbio)$name[x])
+
+
+```
+
+In this case **`r lcli3`** communities are the results of the computation. It comprises ALL subjects, as shown in the following plot.
+
+
+```{r plotcpm3, fig.height=9 }
+
+blockcpm=length(cli_com3)
+mycolors<-rainbow(blockcpm)
+v_col<-rep("white",78)
+
+
+j<-0
+for (i in 1:blockcpm){
+    j<-j+1
+    v_col[cli_com3[[i]] ]<- mycolors[j]
+}
+#v_col[V(snbio)$name %in% names(sbj2)]<-c("white")
+
+plot.igraph(snbio, layout=co, edge.arrow.size=0.1,
+            vertex.label.cex=.7,vertex.color=v_col)
+
+
+```
+
+Running the function with **k=4** result is completely different, as shown in the following plot.
+
+
+```{r plotcpm4, fig.height=9, cache=TRUE}
+cli_com4<-clique.community (snbio,4)
+lcli4<-length(cli_com4)
+
+# sapply(cli_com4, function (x) V(snbio)$name[x])
+
+
+```
+
+
+In this case **`r lcli4`** communities are the results of the computation.
+
+```{r plotf, fig.height=9}
+
+blockcpm=length(cli_com4)
+mycolors<-rainbow(blockcpm)
+v_col<-rep("white",78)
+
+
+j<-0
+for (i in 1:blockcpm){
+    j<-j+1
+    v_col[cli_com4[[i]] ]<- mycolors[j]
+}
+
+plot.igraph(snbio, layout=co, edge.arrow.size=0.1,
+            vertex.label.cex=.7,vertex.color=v_col)
+
+```
+
+
+
+#### Clustering in Two-mode Networks
+
+Finally I run the clustering coefficient proposed  in [Clustering in Two-mode Networks](http://toreopsahl.com/tnet/two-mode-networks/clustering) by Tore Opsahl (Opsahl and Panzarasa, 2009) to check if same results holds also for this approach.
+
+
+A Rpackage is available in order to compute several clustering coefficients directly on 2mode network.
+
+
+```{r tnet, results='hide', warning=FALSE}
+
+library (tnet)
+
+biotechx <- as.tnet(biotech, type="binary two-mode tnet")
+str(biotechx)
+
+pippo<-biotechx$i
+biotechx$i<-as.integer(biotechx$i)
+biotechx$p<-as.integer(biotechx$p)+100
+#str(biotechx)
+
+
+# Calculate the reinforcement coefficient (Robins and Alexander, 2004)
+reinforcement_tm(biotechx)
+
+# Calculate the global coefficient (Opsahl, 2012)
+clustering_tm(biotech)
+
+# Calculate the local coefficient (Opsahl, 2012)
+clu_loc<-clustering_local_tm(biotechx)
+clu_loc
+
+clu_loc[order(clu_loc$lc),  ]
+
+zz<-clu_loc$node[!is.na(clu_loc$lc)]
+```
+
+Taking the results local coefficient (Opsahl, 2012) I print out subjects with a output different from *NaN*.
+
+The 12 subjects with significant coefficient are the **same 12 subjects** in more than one project.
+
+
+```{r tnetresult}
+
+
+levels(pippo)[zz]
+
+```
+
+### Conclusions
+
+Basic concern about two-mode networks when transformed in one-mode undirected networks relates with meaning of clustering and intercohesive factor.    
+
+As shown in the document, networks in which the participating organizations are connected to each other through co-membership in innovation projects, strongly induce both the brokerage index and the intercohesive factor **by common participation in projects**. 
+
+The brokerage index strictly relates with number of projects participated while the intercohesive factor relates with the projects participated together. 
+
+
+The approach proposed by Tore Opsahl (Opsahl and Panzarasa, 2009) follows same line of understanding.
