@@ -70,7 +70,7 @@ neta
 
 ###############################################################
 
-biotech<-read.table("biotech.txt",sep=";", 
+biotech<-read.table("~/GitHub/2mode/data/biotech.txt",sep=";", 
                     header=T) #, stringsAsFactors = FALSE
 biotech
 

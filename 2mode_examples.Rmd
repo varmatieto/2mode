@@ -104,7 +104,7 @@ plot.igraph(snbio, layout=co, edge.arrow.size=0.1,
 
 
 
-Using the *Igraph Rpackage*  local transitivity of each vertex is computed. Transitivity measures the probability that the adjacent vertices of a vertex are connected. This is sometimes also called the clustering coefficient. The local transitivity of a vertex is the
+Using the *Igraph Rpackage*,  local transitivity of each vertex is computed. Transitivity measures the probability that the adjacent vertices of a vertex are connected. This is sometimes also called the clustering coefficient. The local transitivity of a vertex is the
 ratio of the triangles connected to the vertex and the triples centered on the
 vertex. Algorithm uses the definition by A. Barrat.
 
@@ -123,17 +123,56 @@ V(snbio)$name[tt<1]
 
 The 12 subjects with transitivity <1 are the **same 12 subjects** in more than one project.
 
+It is possible to check how projects overlap in term of subjects involved. The following list reports for each couple of projects the subjects which are in both projects.
+I.e. the projects PROGENNANOLAB ed REGENBIOTECH share 4 subjects.
 
-Those 12 subjects can be shown calculating the max cliques of the network, giving a specific colour to each clique and identify subjects which are common to different cliques.
 
 
-```{r cliques, fig.height=9}
+```{r overlap_prj}
+
+f<-list ()
+
+for (i in names (prjsbj) ) {
+
+  for (j in names (prjsbj) ) {
+    
+    if ( i != j) {
+      
+        if (mean(prjsbj[[j]]  %in% prjsbj[[i]]) >0) {
+            
+            f[[i]][[j]]<- prjsbj[[i]]  %in% prjsbj[[j]] 
+        }
+    }
+    
+  }
+  
+}
+ff<-list ()
+
+for (i in names (prjsbj)) {
+    
+    ff[[i]]<-sapply( f[[i]], function(x) sum(x) )
+}
+
+ff
+
+```
+
+Now the max cliques of the network are computed. The max_clique are 10, one clique more then projects.
+
+```{r which_cliques}
 
 # maximal clique  
 myclique<-maximal.cliques(snbio)
 myclique_list<-sapply(myclique, function(x) V(snbio)$name[x])
-myll<-length(myclique_list)
+length(myclique_list)
 
+
+```
+
+The plot of the network give a specific colour to each clique and identify subjects which are common to different cliques.
+
+```{r cliques, fig.height=9}
 ##########PLOT ####################
 myblocks=length(myclique)
 mycolors<-rainbow(myblocks)
@@ -152,22 +191,47 @@ plot.igraph(snbio, layout=co, edge.arrow.size=0.1,
 
 ```
 
+It's important to check what's the difference between projects and clique.
+
+```{r diffprj_cli}
+
+c<-matrix(0,10,2)
+for (i in names(prjsbj)){
+ 
+  
+  for (j in 1:length(myclique_list)) {
+    
+    if (mean(myclique_list[[j]]%in%prjsbj[[i]])==1){
+     c[j,1]<-j 
+     c[j,2]<-i 
+    }
+    
+  }
+        
+}
+ c 
+myclique_list[[7]]
 
 
+```
 
-Now we apply the clique percolation algorithm developed by Palla et al. (2004) as it's implemented in R language and riported in (http://igraph.wikidot.com/community-detection-in-r). 
+The 7th clique is made of three subjects already in the 12 common subjects.
+
+
+As curiosity I tried to run the clique percolation algorithm developed by Palla et al. (2004) as it's implemented in R language and riported in [Community Detection In R ](http://igraph.wikidot.com/community-detection-in-r)  with **k=3**. 3 is equal to the number of subjects in the smallest project minus 1.
+
 
 ```{r cpm}
 
 # clique.community FUNCTION ##############
 
 clique.community <- function(graph, k) {
-  clq <- cliques(graph, min=k, max=k) # my correction with maximal
+  clq <- cliques(graph, min=k, max=k) 
   edges <- c()
   for (i in seq_along(clq)) {
     for (j in seq_along(clq)) {
       if ( length(unique(c(clq[[i]], clq[[j]]))) == k+1 ) {
-        edges <- c(edges, c(i,j)-1)
+        edges <- c(edges, c(i,j))
       }
     }
   }
@@ -180,9 +244,83 @@ clique.community <- function(graph, k) {
   })
 }
 
+cli_com3<-clique.community (snbio,3)
+
+
+sapply(cli_com3, function (x) V(snbio)$name[x])
+
+
+```
+
+In this case two communities are the results of the computation. It comprises ALL subjects.
+
+
+```{r plotcpm, fig.height=9 }
+
+blockcpm=length(cli_com3)
+mycolors<-rainbow(blockcpm)
+v_col<-rep("white",78)
+
+
+j<-0
+for (i in 1:blockcpm){
+    j<-j+1
+    v_col[cli_com3[[i]] ]<- mycolors[j]
+}
+#v_col[V(snbio)$name %in% names(sbj2)]<-c("white")
+
+plot.igraph(snbio, layout=co, edge.arrow.size=0.1,
+            vertex.label.cex=.7,vertex.color=v_col)
 
 
 ```
 
 
+
+
+Finally I run the clustering coefficient proposed  in [Clustering in Two-mode Networks](http://toreopsahl.com/tnet/two-mode-networks/clustering) by Tore Opsahl (Opsahl and Panzarasa, 2009) to check if same results holds also for this approach.
+
+
+A Rpackage is available in order to compute several clustering coefficients directly on 2mode network.
+
+
+```{r tnet, results='hide', warning=FALSE}
+
+library (tnet)
+
+biotechx <- as.tnet(biotech, type="binary two-mode tnet")
+str(biotechx)
+
+pippo<-biotechx$i
+biotechx$i<-as.integer(biotechx$i)
+biotechx$p<-as.integer(biotechx$p)+100
+#str(biotechx)
+
+
+# Calculate the reinforcement coefficient (Robins and Alexander, 2004)
+reinforcement_tm(biotechx)
+
+# Calculate the global coefficient (Opsahl, 2012)
+clustering_tm(biotech)
+
+# Calculate the local coefficient (Opsahl, 2012)
+clu_loc<-clustering_local_tm(biotechx)
+clu_loc
+
+clu_loc[order(clu_loc$lc),  ]
+
+zz<-clu_loc$node[!is.na(clu_loc$lc)]
+```
+
+Taking the results local coefficient (Opsahl, 2012) I print out subjects with a output different from *NaN*.
+
+The 12 subjects with significant coefficient are the **same 12 subjects** in more than one project.
+
+
+```{r tnetresult}
+
+
+levels(pippo)[zz]
+
+```
 
