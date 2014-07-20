@@ -175,6 +175,8 @@ cli_com3<-clique.community (snbio,3)
 cli_com4<-clique.community (snbio,4)
 cli_com5<-clique.community (snbio,5)
 
+
+length(cli_com3)
 mean(unlist(cli_com3)%in%c(1:78))
 
 sapply(cli_com4, function (x) V(snbio)$name[x])
@@ -315,6 +317,9 @@ for (i in names (prjsbj)) {
 }
 
 ff
+fft<-table(unlist(ff))
+print (fft, type="html")
+
 
 g<-list ()
 for (i in names (prjsbj)) {
@@ -325,6 +330,8 @@ for (i in names (prjsbj)) {
 g[[1]][[1]]
 
 unique(unlist (g))
+
+choose(8,2)
 
 names(sbj2) %in% unique(unlist (g))
 
