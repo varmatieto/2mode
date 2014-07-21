@@ -74,9 +74,11 @@ clq <- cliques(snbix, min=k, max=k)
 class(clq)
 length(clq) # 374
 
+clq[1:10]
+
 edges <- c()
-for (i in seq_along(clq)) {
-    for (j in seq_along(clq)) {
+for (i in 1:3) {
+    for (j in 1:3) {
         if ( length(unique(c(clq[[i]], clq[[j]]))) == k+1 ) {
             edges <- c(edges, c(i,j))
         }
@@ -84,8 +86,8 @@ for (i in seq_along(clq)) {
 }
 
 
-
-clq [1:10]
+edges
+clq [1:3]
 
 edges [1:110]
 
@@ -93,9 +95,15 @@ length(edges)
 
 clq.graph <- simplify(graph(edges))
 
+plot(clq.graph )
+
 V(clq.graph)$name <- seq_len(vcount(clq.graph))
 
 comps <- decompose.graph(clq.graph)
+comps[1]
+unlist(clq[ V(comps[[1]])$name ])
+clq[1:3]
+
 
 lapply(comps, function(x) {
-    unique(unlist(clq[ V(x)$name ]))}
+    unique(unlist(clq[ V(x)$name ]))})

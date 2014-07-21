@@ -14,6 +14,7 @@ prjsbj<-sapply(myprj, function(x) biotech$sbj[biotech$prj==x])
 length(prjsbj)
 names(prjsbj)
 
+
 sbj2<-table(biotech$sbj)[table(biotech$sbj)>1]
 names(sbj2)
 
@@ -83,25 +84,67 @@ str(df_snbio)
 #write.table(df_pnbio,file = "prj_3bio_el.txt",  sep = " ",
 #            eol = "\n", na = "NA", dec = ",", row.names = TRUE)
 
-###
+### subnetwork of doubles
 
 
 sbj2to<-df_snbio[df_snbio$weight>1,]
 
-unique(append(sbj2to$from,sbj2to$to))
+sbj2tot<-append(sbj2to$from,sbj2to$to)
 
+sbj2pu<-unique(sbj2tot)
+table(sbj2tot)
+
+
+
+g2 <- induced.subgraph(graph=snbio,vids=names(sbj2))
+
+v_col<-rep("white",12)
+v_col[V(g2)$name%in%sbj2pu]<-c("red")
+
+
+plot(g2,vertex.color=v_col )
 # ----------------------------------------------
 snbio 
 
-V(snbio)$name
+E(snbio)$weight
+
 
 # clustering coefficient
-tt<-transitivity (snbio,type=c("local" )) 
+tt<-transitivity (snbio,type=c("local" ))
+str(tt)
+dd<-degree(snbio)
+
+tt1<-cbind(V(snbio)$name,round(tt,2),dd)
+tt1<-as.data.frame(tt1, stringsAsFactors = FALSE)
+str(tt1)
+
+nprj1<-cbind(names(table(biotech$sbj)), as.numeric(table(biotech$sbj)))
+nprj1<-as.data.frame(nprj1, stringsAsFactors = FALSE)
+str(nprj1)
+
+ttnprj<-merge (tt1,nprj1, by="V1", stringsAsFactors = FALSE)
+str(ttnprj)
+ttnprj<-cbind(ttnprj, c("no2prj"), stringsAsFactors = FALSE)
+str(ttnprj)
+colnames(ttnprj)<-c("subjects","cluindx","degree","nprj","s2ub")
+colnames(ttnprj)
+
+zz<-which(ttnprj$nprj>1)
+ttnprj$s2ub[zz]  <-ttnprj$subjects[zz]
+
+plot(ttnprj$nprj ,ttnprj$degree )
+
+library (ggplot2)
+
+ggplot(ttnprj, aes(cluindx, nprj) ) + 
+    geom_point(size = 10, color="gold",show_guide = FALSE) + 
+    scale_x_discrete(breaks=seq(0, 1, 0.10)) +
+    ggtitle("clustering index VS n.projects") +
+    ylab("n.prj") + xlab("index") +
+    geom_text(aes(label=s2ub), size=3, , hjust=0.5, vjust=3, color="red") 
 
 
-tt[tt<1]
-V(snbio)$name[tt<1]
-V(snbio)$name[tt<1]%in%names(sbj2)
+
 
 
 # betweenness
@@ -317,8 +360,9 @@ for (i in names (prjsbj)) {
 }
 
 ff
-fft<-table(unlist(ff))
-print (fft, type="html")
+str(ff)
+table(unlist(ff))
+
 
 
 g<-list ()
