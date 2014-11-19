@@ -141,9 +141,7 @@ ggplot(ttnprj, aes(cluindx, nprj) ) +
     scale_x_discrete(breaks=seq(0, 1, 0.10)) +
     ggtitle("clustering index VS n.projects") +
     ylab("n.prj") + xlab("index") +
-    geom_text(aes(label=s2ub), size=3, , hjust=0.5, vjust=3, color="red") 
-
-
+    geom_text(aes(label=s2ub), size=3, , hjust=0.5, vjust=3, color="red")
 
 
 
@@ -191,6 +189,8 @@ plot.igraph(snbio, layout=layout.fruchterman.reingold, edge.arrow.size=0.1,
 
 library (igraph)
 
+
+####################################################################
 # clique.community FUNCTION ##############
 
 clique.community <- function(graph, k) {
@@ -264,6 +264,58 @@ for (i in 1:blockper){
 #v_col[V(snbio)$name %in% names(sbj2)]<-c("white")
 
 plot.igraph(snbio, layout=layout.fruchterman.reingold, edge.arrow.size=0.1,
+            vertex.label.cex=.7,vertex.color=v_col)
+
+
+#####################################################
+# COHESIVE BLOCKS
+#
+#
+################################################
+
+
+cohblk_snbio<-cohesive.blocks(snbio)
+
+print(cohblk_snbio) #it says everything you need
+
+
+
+length(cohblk_snbio)
+block_snbio<-blocks(cohblk_snbio)
+
+plot(hierarchy(cohblk_snbio))
+plotHierarchy(cohblk_snbio)
+
+ssblock_snbio<-cohesion(cohblk_snbio)
+
+maxcohesion(cohblk_snbio)
+
+
+plot(cohblk_snbio,snbio)
+
+
+table(ssblock_snbio)
+
+blockGraphs(cohblk_snbio)
+
+V(snbio)$name[block_snbio[[7]]]
+
+
+# plotting level 4 
+block4<-block_snbio[4:11]
+
+blockcpm=length(block4)
+mycolors<-rainbow(blockcpm)
+v_col<-rep("white",78)
+
+
+j<-0
+for (i in 1:blockcpm){
+  j<-j+1
+  v_col[block4[[i]] ]<- mycolors[j]
+}
+co<-layout.fruchterman.reingold(snbio)
+plot.igraph(snbio, layout=co, edge.arrow.size=0.1,
             vertex.label.cex=.7,vertex.color=v_col)
 
 
